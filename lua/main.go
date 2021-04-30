@@ -14,11 +14,12 @@ func main() {
 		panic(err)
 	}
 
+	if err := L.DoString(`return "this is amazing"`); err != nil {
+		panic(err)
+	}
+
 	lv := L.Get(-1)
 	if str, ok := lv.(lua.LString); ok {
-		fmt.Println(string(str))
-	}
-	if lv.Type() != lua.LTString {
-		panic("string required")
+		fmt.Println("got: " + string(str))
 	}
 }
