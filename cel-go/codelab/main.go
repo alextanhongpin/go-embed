@@ -204,7 +204,33 @@ func exercise4() {
 //
 // Given the input `now`, construct a JWT with an expiry of 5 minutes.
 func exercise5() {
-	fmt.Println("=== Exercise 5: Building JSON ===\n")
+	fmt.Println("=== Exercise 5: Building JSON ===")
+	env, _ := cel.NewEnv(
+		// Declare the `now` variable as timestamp.
+		cel.Declarations(
+			decls.NewVar("now", decls.Timestamp),
+		),
+	)
+	ast := compile(env, `
+	{'sub': 'serviceAccount:delegate@acme.co',
+	 'aud': 'my-project',
+	 'iss': 'auth.acme.com:123450',
+	 'iat': now,
+	 'nbf': now,
+	 'exp': now + duration('300s'),
+	 'extra_claims': {
+		 'group': 'admin'
+		}
+	}`, decls.NewMapType(decls.String, decls.Dyn))
+	program, _ := env.Program(ast)
+	out, _, _ := eval(
+		program,
+		map[string]interface{}{
+			"now": &tpb.Timestamp{Seconds: time.Now().Unix()},
+		},
+	)
+
+	fmt.Printf("type conversion: %v\n", valueToJSON(out))
 
 	fmt.Println()
 }
@@ -215,7 +241,52 @@ func exercise5() {
 // `google.rpc.context.AttributeContext.Request` with the `time` and `auth`
 // fields populated according to the go/api-attributes specification.
 func exercise6() {
-	fmt.Println("=== Exercise 6: Building Protos ===\n")
+	fmt.Println("=== Exercise 6: Building Protos ===")
+
+	env, _ := cel.NewEnv(
+		// Add cel.Container() option for `google.rpc.context.AttributeContext`.
+		cel.Container("google.rpc.context.AttributeContext.Request"),
+		cel.Types(&rpcpb.AttributeContext_Request{}),
+		// Add cel.Declarations() option for'jwt as a map(string, Dyn) type
+		// and for 'now' as a timestamp..
+		cel.Declarations(
+			decls.NewVar("now", decls.Timestamp),
+			decls.NewVar("jwt", decls.NewMapType(decls.String, decls.Dyn)),
+		),
+	)
+
+	ast := compile(env, `
+		Request{
+			auth: Auth{
+				principal: jwt.iss + '/' + jwt.sub,
+				audiences: [jwt.aud],
+				presenter: 'azp' in jwt ? jwt.azp : "",
+				claims: jwt
+			},
+			time: now,
+		}`,
+		decls.NewObjectType("google.rpc.context.AttributeContext.Request"),
+	)
+	program, _ := env.Program(ast)
+	// Construct the message. The result is a ref.Val whose Value() method wil
+	// return the underlying proto message. No conversion from CEL type to
+	// native type required.
+
+	out, _, _ := eval(
+		program,
+		map[string]interface{}{
+			"jwt": map[string]interface{}{
+				"sub": "serviceAccount:delegate@acme.co",
+				"aud": "my-project",
+				"iss": "auth.acme.com:123460",
+				"extra_claims": map[string]string{
+					"group": "admin",
+				},
+			},
+			"now": &tpb.Timestamp{Seconds: time.Now().Unix()},
+		},
+	)
+	fmt.Printf("type unwrap: %v\n", out)
 
 	fmt.Println()
 }
@@ -226,7 +297,42 @@ func exercise6() {
 // with the `group` prefix, and ensure that all group-like keys have list
 // values containing only strings that end with '@acme.co`.
 func exercise7() {
-	fmt.Println("=== Exercise 7: Macros ===\n")
+	fmt.Println("=== Exercise 7: Macros ===")
+	env, _ := cel.NewEnv(
+		// Uncomment to disable macros.
+		//cel.ClearMacros(),
+		cel.Declarations(
+			decls.NewVar("jwt", decls.NewMapType(decls.String, decls.Dyn)),
+		),
+	)
+
+	// See list of macros here:
+	// https://codelabs.developers.google.com/codelabs/cel-go#10
+	ast := compile(env,
+		`jwt.extra_claims.exists(c, c.startsWith('group'))
+			&& jwt.extra_claims
+				.filter(c, c.startsWith('group'))
+				.all(c, jwt.extra_claims[c]
+									 .all(g, g.endsWith('@acme.co')))`,
+		decls.Bool,
+	)
+	program, _ := env.Program(ast)
+
+	// Evaluate a complex-ish JWT with two groups that satisfy the criteria.
+	// Output: true.
+	eval(program,
+		map[string]interface{}{
+			"jwt": map[string]interface{}{
+				"sub": "serviceAccount:delegate@acme.co",
+				"aud": "my-project",
+				"iss": "auth.acme.com:12350",
+				"extra_claims": map[string][]string{
+					"group1": {"admin@acme.co", "analyst@acme.co"},
+					"labels": {"metadata", "prod", "pii"},
+					"groupN": {"forever@acme.co"},
+				},
+			},
+		})
 
 	fmt.Println()
 }
@@ -240,7 +346,33 @@ func exercise7() {
 // Also, turn on the homogeneous aggregate literals flag to disable
 // heterogeneous list and map literals.
 func exercise8() {
-	fmt.Println("=== Exercise 8: Tuning ===\n")
+	fmt.Println("=== Exercise 8: Tuning ===")
+	env, _ := cel.NewEnv(
+		cel.Declarations(
+			decls.NewVar("x", decls.Int),
+			decls.NewVar("y", decls.Uint),
+		),
+	)
+
+	ast := compile(env, `x in [1,2,3,4,5] && type(y) == uint`, decls.Bool)
+
+	// Try the different cel.EvalOptions flags when evaluating this AST for the following use cases:
+	// - cel.OptOptimize: optimize the expression performance.
+	// - cel.OptExhaustiveEval: turn off short-circuiting.
+	// - cel.OptTrackState: track state and compute a residual using the interpreter.PruneAst function.
+
+	program, _ := env.Program(ast)
+	eval(program, cel.NoVars())
+
+	// Optimize.
+	trueVars := map[string]interface{}{"x": int64(4), "y": uint64(2)}
+	program, _ = env.Program(ast, cel.EvalOptions(cel.OptOptimize))
+	eval(program, trueVars)
+
+	// Exhaustive Eval
+	falseVars := map[string]interface{}{"x": int64(6), "y": uint64(2)}
+	program, _ = env.Program(ast, cel.EvalOptions(cel.OptExhaustiveEval))
+	eval(program, falseVars)
 
 	fmt.Println()
 }
