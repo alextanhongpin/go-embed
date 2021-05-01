@@ -18,6 +18,9 @@ func main() {
 			decls.NewVar("group", decls.String),
 		),
 	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Parsing checks if the expression is syntactically
 	// valid.

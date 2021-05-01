@@ -15,3 +15,4 @@ What other language do we have?
 1. https://otm.github.io/2015/07/embedding-lua-in-go/
 2. https://go.libhunt.com/categories/485-embeddable-scripting-languages
 3. https://github.com/google/cel-go
+4. https://go.libhunt.com/categories/485-embeddable-scripting-languages
