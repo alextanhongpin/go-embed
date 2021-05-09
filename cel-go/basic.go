@@ -3,6 +3,8 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"reflect"
 
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/checker/decls"
@@ -31,7 +33,15 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println(out)
+		t, err := out.ConvertToNative(reflect.TypeOf(true))
+		if err != nil {
+			panic(err)
+		}
+		v, ok := t.(bool)
+		if !ok {
+			log.Fatal("failed to convert to native boolean")
+		}
+		log.Println(v)
 	}
 }
 
