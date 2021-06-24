@@ -18,6 +18,8 @@ What other language do we have?
 
 For javascript, there's vm and [vm2](https://github.com/patriksimek/vm2)
 
+https://dhall-lang.org
+
 ## References
 
 1. https://otm.github.io/2015/07/embedding-lua-in-go/
