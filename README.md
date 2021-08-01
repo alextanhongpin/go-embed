@@ -15,6 +15,7 @@ What other language do we have?
 - [jsonnet](https://jsonnet.org/learning/tutorial.html)
 - [starlark](https://github.com/bazelbuild/starlark), and [starlark-go](https://github.com/google/starlark-go)
 - [cel-go](https://github.com/google/cel-go)
+- [go-bexpr](https://github.com/hashicorp/go-bexpr) from Hashicorp
 
 For javascript, there's vm and [vm2](https://github.com/patriksimek/vm2)
 
