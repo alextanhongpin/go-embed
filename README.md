@@ -31,3 +31,52 @@ https://dhall-lang.org
 
 1. https://otm.github.io/2015/07/embedding-lua-in-go/
 2. https://go.libhunt.com/categories/485-embeddable-scripting-languages
+
+
+## go-jsonnet
+
+An alternative to modify json dynamically in golang since jsonata port doesn't exist.
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+
+	"github.com/google/go-jsonnet"
+)
+
+func main() {
+	vm := jsonnet.MakeVM()
+
+	snippet := `{
+		person1: {
+		    name: "Alice",
+		    welcome: "Hello " + std.extVar("name").name + "!",
+		},
+		person2: self.person1 { name: "Bob" },
+	}`
+
+	// vm.ExtVar("sth", "else") // This is only string
+	vm.ExtCode("name", `{"name": "john"}`) // Object is allowed
+	jsonStr, err := vm.EvaluateAnonymousSnippet("example1.jsonnet", snippet)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(jsonStr)
+	/*
+	   {
+	     "person1": {
+	         "name": "Alice",
+	         "welcome": "Hello Alice!"
+	     },
+	     "person2": {
+	         "name": "Bob",
+	         "welcome": "Hello Bob!"
+	     }
+	   }
+	*/
+}
+```
