@@ -19,6 +19,7 @@ What other language do we have?
 - [cel-go](https://github.com/google/cel-go)
 - [go-bexpr](https://github.com/hashicorp/go-bexpr) from Hashicorp
 - [jsonata](https://jsonata.org/)
+- https://www.kcl-lang.io/docs/user_docs/getting-started/kcl-quick-start
 
 For javascript, there's vm and [vm2](https://github.com/patriksimek/vm2), and [isolated-vm](https://github.com/laverdet/isolated-vm) that is used by [temporal](https://docs.temporal.io/blog/intro-to-isolated-vm/).
 
